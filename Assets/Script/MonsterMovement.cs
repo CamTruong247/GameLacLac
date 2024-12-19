@@ -62,8 +62,8 @@ public class SlimeMovement : NetworkBehaviour
     private void FindNearestPlayer()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-        float closestDistance = float.MaxValue; // Khởi tạo khoảng cách gần nhất
-        targetPlayer = null; // Đặt lại tham chiếu đến player gần nhất
+        float closestDistance = float.MaxValue; 
+        targetPlayer = null;
 
         // Tìm player gần nhất
         foreach (GameObject playerObj in players)
@@ -74,7 +74,7 @@ public class SlimeMovement : NetworkBehaviour
                 if (distance < closestDistance)
                 {
                     closestDistance = distance;
-                    targetPlayer = playerObj.transform; // Cập nhật player gần nhất
+                    targetPlayer = playerObj.transform;
                 }
             }
             

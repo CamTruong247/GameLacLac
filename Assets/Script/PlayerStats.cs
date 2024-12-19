@@ -148,7 +148,7 @@ public class PlayerStats : NetworkBehaviour
             gameObject.transform.GetChild(2).gameObject.SetActive(false);
             gameObject.GetComponent<BoxCollider2D>().isTrigger = true;
             gameObject.GetComponent<SummonPet>().enabled = false;
-            gameObject.GetComponent<AuraEffect>().enabled = false;
+            //gameObject.GetComponent<AuraEffect>().enabled = false;
         }
     }
 
@@ -184,7 +184,7 @@ public class PlayerStats : NetworkBehaviour
             gameObject.transform.GetChild(2).gameObject.SetActive(true);
             gameObject.GetComponent<BoxCollider2D>().isTrigger = false;
             gameObject.GetComponent<SummonPet>().enabled = true;
-            gameObject.GetComponent<AuraEffect>().enabled = true;
+            //gameObject.GetComponent<AuraEffect>().enabled = true;
         }
     }
 }

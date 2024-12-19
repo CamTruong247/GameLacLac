@@ -45,10 +45,10 @@ public class Weapon : NetworkBehaviour
         }
     }
 
-    private void FixedUpdate()
+    /*private void FixedUpdate()
     {
         RotationWeapon(); // Xoay vũ khí theo chuột
-    }
+    }*/
 
     private IEnumerator AutoAttack()
     {
@@ -97,17 +97,17 @@ public class Weapon : NetworkBehaviour
                 // Cập nhật thời gian sử dụng kỹ năng Q
                 lastSkillQTime = Time.time;
 
-                // Đặt laser ở vị trí của nhân vật
+             
                 Vector3 laserPosition = transform.position;
-                var l = Instantiate(laser, laserPosition, transform.rotation);
+                var l = Instantiate(laser, laserPosition, Quaternion.identity);
                 l.GetComponent<NetworkObject>().Spawn();
 
               
-                StartCoroutine(DestroyLaserAfterDelay(l, 0.7f));
+                StartCoroutine(DestroyLaserAfterDelay(l, 1f));
             }
             else
             {
-                // Nếu kỹ năng Q chưa mở khóa hoặc cooldown chưa hết, không làm gì
+                
                 Debug.Log("Skill Q not unlocked or still on cooldown");
             }
         }
@@ -127,31 +127,69 @@ public class Weapon : NetworkBehaviour
             return;
         }
     }
-
-    private void RotationWeapon()
+    private Transform FindClosestEnemy()
     {
-        Vector3 mousePos = camera.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 look = mousePos - transform.position;
-        float angle = Mathf.Atan2(look.y, look.x) * Mathf.Rad2Deg;
+        Transform closestEnemy = null;
+        float closestDistance = Mathf.Infinity;
+
+        // Get all enemies in the scene
+        var enemies = GameObject.FindGameObjectsWithTag("Enemy");
+
+        foreach (var enemy in enemies)
+        {
+            float distance = Vector3.Distance(transform.position, enemy.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemy = enemy.transform;
+            }
+        }
+
+        return closestEnemy;
+    }
+
+    private void RotationWeapon(Vector3 targetPosition)
+    {
+        Vector3 direction = targetPosition - transform.position;
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         Quaternion rotation = Quaternion.Euler(0, 0, angle);
-        transform.rotation = rotation; // Xoay vũ khí
+        transform.rotation = rotation;
     }
 
     private void FireOneBullet()
     {
-        // Bắn 1 viên đạn như bình thường
-        var b = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);
-        b.GetComponent<NetworkObject>().Spawn();
+        // Fire 1 bullet towards the nearest enemy
+        Transform closestEnemy = FindClosestEnemy();
+        if (closestEnemy != null)
+        {
+            RotationWeapon(closestEnemy.position); // Rotate towards the target
+            var bulletInstance = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);
+            bulletInstance.GetComponent<NetworkObject>().Spawn();
+            bulletInstance.GetComponent<Rigidbody2D>().velocity = (closestEnemy.position - transform.position).normalized * 7f; // Adjust bullet speed
+        }
     }
 
     private void FireTwoBullets()
     {
-        var b1 = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);
-        var b2 = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);  
-        float angleOffset = 5f;
-        float angle = shootingPoint.rotation.eulerAngles.z + angleOffset;    
-        b2.transform.rotation = Quaternion.Euler(0, 0, angle); 
-        b1.GetComponent<NetworkObject>().Spawn();
-        b2.GetComponent<NetworkObject>().Spawn();
+        // Fire 2 bullets with a small offset
+        Transform closestEnemy = FindClosestEnemy();
+        if (closestEnemy != null)
+        {
+            RotationWeapon(closestEnemy.position); // Rotate towards the target
+
+            var bullet1 = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);
+            var bullet2 = Instantiate(bullet, shootingPoint.position, shootingPoint.rotation);
+
+            // Apply slight angle offset for the second bullet
+            float angleOffset = 5f;
+            float angle = shootingPoint.rotation.eulerAngles.z + angleOffset;
+            bullet2.transform.rotation = Quaternion.Euler(0, 0, angle);
+
+            bullet1.GetComponent<NetworkObject>().Spawn();
+            bullet2.GetComponent<NetworkObject>().Spawn();
+
+            bullet1.GetComponent<Rigidbody2D>().velocity = (closestEnemy.position - transform.position).normalized * 7f;
+            bullet2.GetComponent<Rigidbody2D>().velocity = (closestEnemy.position - transform.position).normalized * 7f;
+        }
     }
 }

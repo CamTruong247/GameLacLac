@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -42,9 +42,17 @@ public class AudioManager : MonoBehaviour
     {
         PlayMusicForCurrentScene();
     }
-
+    private void EnsureSingleAudioListener()
+    {
+        AudioListener[] listeners = FindObjectsOfType<AudioListener>();
+        for (int i = 1; i < listeners.Length; i++) // Bắt đầu từ index 1 để giữ lại listener đầu tiên
+        {
+            Destroy(listeners[i]); // Xóa các AudioListener dư thừa
+        }
+    }
     private void PlayMusicForCurrentScene()
     {
+        EnsureSingleAudioListener();
         string currentSceneName = SceneManager.GetActiveScene().name;
         if (currentSceneName == "Menu")
         {

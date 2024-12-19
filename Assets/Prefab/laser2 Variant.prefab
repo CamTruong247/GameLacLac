@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5833996732417248016, guid: d656572761b3e57438c62d25f0335dea, type: 3}
       propertyPath: GlobalObjectIdHash
-      value: 2069399716
+      value: 2005766159
       objectReference: {fileID: 0}
     - target: {fileID: 6400541178933249970, guid: d656572761b3e57438c62d25f0335dea, type: 3}
       propertyPath: m_Name
@@ -185,7 +185,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 0.64, y: 0.64}
+  m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
 --- !u!114 &-2686746741328920936
 MonoBehaviour:

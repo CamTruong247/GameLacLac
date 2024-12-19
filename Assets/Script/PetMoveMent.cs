@@ -5,7 +5,7 @@ using Unity.Netcode;
 public class PetMovement : NetworkBehaviour
 {
     [SerializeField] private GameObject attackBallPrefab;
-    public Animator animator; // Animator for pet animations
+    [SerializeField] private Transform player;
     [SerializeField] private float lifetime = 15.0f;
     private float moveSpeed = 2f;
     private Rigidbody2D rb;
@@ -16,55 +16,64 @@ public class PetMovement : NetworkBehaviour
     private float attackCooldown = 2f;
     private bool isAttacking = false;
     private Quaternion originalRotate;
-
+    private bool isFollowing = true;
+    [SerializeField] private float followDistance = 2f;
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>(); // Get the Animator component
         originalRotate = transform.rotation;
     }
-
+    private void Start()
+    {
+        if (IsServer)
+        {
+            // Tìm kiếm nhân vật theo tag hoặc Netcode's ownership
+            player = FindPlayerTransform();
+        }
+    }
+    private Transform FindPlayerTransform()
+    {
+        GameObject player = GameObject.FindWithTag("Player");
+        if (player != null)
+        {
+            return player.transform;
+        }
+        return null;
+    }
     private void Update()
     {
         if (IsServer)
         {
-            FindNearestEnemy();
+            if (player == null)
+            {
+                player = FindPlayerTransform(); 
+            }
+
+            if (player != null && isFollowing)
+            {
+                FollowPlayer(); 
+            }
+
+            FindNearestEnemy(); 
 
             if (targetEnemy != null)
             {
                 float distanceToEnemy = Vector2.Distance(transform.position, targetEnemy.position);
 
-                if (distanceToEnemy <= detectionRange && !isAttacking)
+               
+                if (distanceToEnemy <= attackRange && !isAttacking)
                 {
-                    // Move towards the enemy
-                    direction = (targetEnemy.position - transform.position).normalized;
-                    animator.SetBool("isRunning", true); // Start moving animation
-                    MoveServerRpc(direction);
-
-                    // Attack if within range
-                    if (distanceToEnemy <= attackRange)
-                    {
-                        StartCoroutine(AttackCoroutine());
-                    }
+                    StartCoroutine(AttackCoroutine());
                 }
-                else
-                {
-                    animator.SetBool("isRunning", false); // Stop moving animation
-                    StopServerRpc();
-                }
+            }
 
-                transform.rotation = originalRotate;
-            }
-            else
-            {
-                animator.SetBool("isRunning", false); // Stop moving if no target
-            }
-            Invoke(nameof(DestroySelf), lifetime);
+            transform.rotation = originalRotate; 
+            Invoke(nameof(DestroySelf), lifetime); 
         }
     }
+
     private void DestroySelf()
     {
-        // Tự hủy slime sau thời gian tồn tại
         if (IsServer)
         {
             NetworkObject networkObject = GetComponent<NetworkObject>();
@@ -74,6 +83,21 @@ public class PetMovement : NetworkBehaviour
             }
         }
     }
+
+    private void MoveTowardsPlayer()
+    {
+        float distanceToPlayer = Vector2.Distance(transform.position, player.transform.position);
+        if (distanceToPlayer > 0.1f)
+        {
+            direction = (player.position - transform.position).normalized;
+            MoveServerRpc(direction);
+        }
+        else
+        {
+            StopServerRpc();
+        }
+    }
+
     private void FindNearestEnemy()
     {
         GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
@@ -83,14 +107,34 @@ public class PetMovement : NetworkBehaviour
         foreach (GameObject enemyObj in enemies)
         {
             float distance = Vector2.Distance(transform.position, enemyObj.transform.position);
-            if (distance < closestDistance)
+            if (distance < closestDistance && distance <= detectionRange)
             {
                 closestDistance = distance;
                 targetEnemy = enemyObj.transform;
             }
         }
     }
+    private void FollowPlayer()
+    {
+     
+        float distanceToPlayer = Vector2.Distance(transform.position, player.position);
 
+        if (distanceToPlayer > followDistance)
+        {
+            Vector2 direction = (player.position - transform.position).normalized;
+            rb.velocity = direction * moveSpeed;
+
+           
+            if (direction.x > 0)
+                transform.localScale = new Vector3(-0.12f, 0.12f, 1);
+            else if (direction.x < 0)
+                transform.localScale = new Vector3(0.12f, 0.12f, 1);
+        }
+        else
+        {
+            rb.velocity = Vector2.zero; // Dừng lại nếu đã đủ gần
+        }
+    }
     [ServerRpc(RequireOwnership = false)]
     private void MoveServerRpc(Vector2 newDirection)
     {
@@ -105,11 +149,11 @@ public class PetMovement : NetworkBehaviour
 
         if (newDirection.x > 0)
         {
-            transform.localScale = new Vector3(1, 1, 1); // Facing right
+            transform.localScale = new Vector3(0.12f, 0.12f, 1); // Quay phải
         }
         else if (newDirection.x < 0)
         {
-            transform.localScale = new Vector3(-1, 1, 1); // Facing left
+            transform.localScale = new Vector3(-0.12f, 0.12f, 1); // Quay trái
         }
     }
 
@@ -122,10 +166,6 @@ public class PetMovement : NetworkBehaviour
     private IEnumerator AttackCoroutine()
     {
         isAttacking = true;
-        animator.SetBool("isRunning", false); // Dừng animation di chuyển khi tấn công
-
-        // Tìm quái vật gần nhất
-        FindNearestEnemy();
 
         if (targetEnemy != null)
         {
@@ -140,7 +180,7 @@ public class PetMovement : NetworkBehaviour
             ball.GetComponent<AttackBall>().Initialize(targetEnemy, attackDirection);
         }
 
-        // Đợi thời gian làm mới (cooldown) trước khi cho phép tấn công tiếp theo
+        // Đợi cooldown
         yield return new WaitForSeconds(attackCooldown);
         isAttacking = false;
     }
